@@ -1,0 +1,87 @@
+{
+  "name": "display-bridge",
+  "version": "0.5.0",
+  "description": "屏间 · 局域网显示器切换控制台",
+  "author": "DisplayBridge",
+  "license": "MIT",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "native:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win.ps1",
+    "native:mac": "node scripts/build-mac.cjs",
+    "dist:win": "npm run native:win && electron-builder --win dir",
+    "dist:mac": "npm run native:mac && electron-builder --mac zip --arm64",
+    "diagnose": "node scripts/diagnose.cjs",
+    "smoke": "electron . --smoke",
+    "audit:public": "node scripts/audit-public.cjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "yazl": "3.3.1"
+  },
+  "build": {
+    "appId": "local.displaybridge.app",
+    "productName": "DisplayBridge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "native/bin",
+        "to": "native",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      }
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": "dir",
+      "signAndEditExecutable": true,
+      "signExecutable": false
+    },
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": "zip",
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "extraResources": [
+        {
+          "from": "native/macos/DisplayDdc.m",
+          "to": "native-source/DisplayDdc.m"
+        },
+        {
+          "from": "vendor/m1ddc",
+          "to": "native-source/vendor",
+          "filter": [
+            "headers/**/*",
+            "sources/i2c.m",
+            "sources/ioregistry.m",
+            "LICENSE",
+            "PINNED_REVISION.txt"
+          ]
+        }
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ipoolo/DisplayBridge.git"
+  },
+  "homepage": "https://github.com/ipoolo/DisplayBridge",
+  "bugs": {
+    "url": "https://github.com/ipoolo/DisplayBridge/issues"
+  }
+}

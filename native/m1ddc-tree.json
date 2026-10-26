@@ -1,0 +1,101 @@
+{
+  "sha": "04d949794102eb8df01ad3681afff6464a3eede2",
+  "url": "https://api.github.com/repos/waydabber/m1ddc/git/trees/04d949794102eb8df01ad3681afff6464a3eede2",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be475aa6351f5e93cff4a7e6ea388cd62be09479",
+      "size": 166,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/be475aa6351f5e93cff4a7e6ea388cd62be09479"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "277c6542c0f0ed216f935bbffcb87d58894d1c9e",
+      "size": 1066,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/277c6542c0f0ed216f935bbffcb87d58894d1c9e"
+    },
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee154f4fc5abfdf34ff64aa9957a1d10fe100e1f",
+      "size": 3260,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/ee154f4fc5abfdf34ff64aa9957a1d10fe100e1f"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9ef25dc9679d0e912df5c393eac4092caaf5b50",
+      "size": 7914,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/d9ef25dc9679d0e912df5c393eac4092caaf5b50"
+    },
+    {
+      "path": "headers",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0da9374dffdc8cddab6b4c0424f0c7d56d7de5b1",
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/trees/0da9374dffdc8cddab6b4c0424f0c7d56d7de5b1"
+    },
+    {
+      "path": "headers/i2c.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f57e7c23541bd18d94c8db0495d7d63cd359f97",
+      "size": 1900,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/8f57e7c23541bd18d94c8db0495d7d63cd359f97"
+    },
+    {
+      "path": "headers/ioregistry.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f048a58506e2a14c2537717e333dadf906f31c02",
+      "size": 1476,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/f048a58506e2a14c2537717e333dadf906f31c02"
+    },
+    {
+      "path": "headers/utils.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0162e1a4bfbb6dd1655a3a477526619aa2a71d5",
+      "size": 91,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/c0162e1a4bfbb6dd1655a3a477526619aa2a71d5"
+    },
+    {
+      "path": "sources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f5d300afe4871ad36750d19cd101a81a7da5a42e",
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/trees/f5d300afe4871ad36750d19cd101a81a7da5a42e"
+    },
+    {
+      "path": "sources/i2c.m",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "08d7303728ef0719a6a6b69f4fbc4865c1c9d5b1",
+      "size": 2924,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/08d7303728ef0719a6a6b69f4fbc4865c1c9d5b1"
+    },
+    {
+      "path": "sources/ioregistry.m",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1a49835f95210057261118bf67c8bb66d5e3a03",
+      "size": 10421,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/d1a49835f95210057261118bf67c8bb66d5e3a03"
+    },
+    {
+      "path": "sources/m1ddc.m",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b30fa7eaf8ef9f25f9314cb6f5d99ef7f4e2346",
+      "size": 14760,
+      "url": "https://api.github.com/repos/waydabber/m1ddc/git/blobs/4b30fa7eaf8ef9f25f9314cb6f5d99ef7f4e2346"
+    }
+  ],
+  "truncated": false
+}

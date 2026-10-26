@@ -1,0 +1,4 @@
+Repository: https://github.com/waydabber/m1ddc
+Commit: 04d949794102eb8df01ad3681afff6464a3eede2
+Fetched through GitHub git/blobs API. Original files are unmodified.
+DisplayBridge builds its own JSON adapter against sources/i2c.m and sources/ioregistry.m.

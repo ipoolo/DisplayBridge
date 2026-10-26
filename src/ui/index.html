@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>屏间 · DisplayBridge</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dialog.css">
+  <link rel="stylesheet" href="compact.css">
+</head>
+<body>
+  <div class="window-drag-strip" aria-hidden="true"></div>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">▱</span><div><strong>屏间</strong><span>DisplayBridge</span></div></div>
+    <div class="sidebar-label">工作空间</div>
+    <nav aria-label="主导航">
+      <button data-page="displays" class="selected"><span class="nav-icon blue">▣</span>显示器</button>
+      <button data-page="scenes"><span class="nav-icon purple">▦</span>场景与循环</button>
+      <button data-page="devices"><span class="nav-icon green">⌘</span>设备与连接</button>
+      <button data-page="shortcuts"><span class="nav-icon orange">⌥</span>快捷键</button>
+      <button data-page="keyboard"><span class="nav-icon purple">⌨</span>键盘</button>
+      <button data-page="mouse"><span class="nav-icon teal"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="6"/><path d="M12 3v6M6 10h12"/></svg></span>鼠标</button>
+      <button data-page="clipboard"><span class="nav-icon teal">▧</span>复制内容</button>
+      <button data-page="settings"><span class="nav-icon gray">⚙</span>设置</button>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span><div><strong id="local-name">正在连接…</strong><span>本机 · 局域网控制</span></div></div>
+  </aside>
+  <main>
+    <div class="compact-toolbar" id="compact-toolbar" hidden><div class="compact-brand"><strong>屏间</strong><span class="status-dot"></span><small id="compact-status"></small></div><div class="toolbar-actions"><button class="toolbar-icon" data-action="self-check" title="自动检测" aria-label="自动检测">◎</button><button class="toolbar-icon" data-action="go-clipboard" title="跨设备复制" aria-label="跨设备复制">▧</button><button class="toolbar-icon" data-action="full-mode" title="完整模式与设置" aria-label="完整模式与设置">⚙</button></div></div>
+    <header><div><div class="eyebrow">YOUR DESK, CONNECTED</div><h1 id="page-title">显示器</h1><p id="page-subtitle">让每一块屏幕，回到你正在做的事。</p></div><div class="header-actions"><button class="button secondary" data-action="compact-mode">精简模式</button><button class="button secondary" id="refresh">↻ &nbsp;刷新状态</button></div></header>
+    <section id="content" aria-live="polite"><div class="empty">正在读取显示器…</div></section>
+    <footer id="footer">正在检测设备</footer>
+  </main>
+  <dialog id="editor"><form id="editor-form"><div id="editor-body"></div><div class="dialog-actions"><button type="button" class="button secondary" id="cancel-editor">取消</button><button class="button primary" id="save-editor" type="submit">保存</button></div><p id="editor-error" role="alert"></p></form></dialog>
+  <div id="toast" role="status"></div>
+  <script src="icons.js"></script><script src="app.js"></script>
+</body>
+</html>

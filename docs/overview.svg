@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="610" viewBox="0 0 1100 610" role="img" aria-labelledby="title desc">
+<title id="title">屏间 DisplayBridge 工作空间示意图</title><desc id="desc">两块显示器分别显示 Windows 和 Mac，下面可以选择全 Windows、混合布局和全 Mac 场景。侧栏提供独立键盘、鼠标与复制内容入口。图中名称均为虚构示例。</desc>
+<defs><linearGradient id="win" x2="1" y2="1"><stop stop-color="#dcecff"/><stop offset="1" stop-color="#8eb7e0"/></linearGradient><linearGradient id="mac" x2="1" y2="1"><stop stop-color="#eeddfd"/><stop offset="1" stop-color="#acafe6"/></linearGradient><symbol id="w" viewBox="0 0 24 24"><path fill="currentColor" d="M2 3h9v8H2zm11 0h9v8h-9zM2 13h9v8H2zm11 0h9v8h-9z"/></symbol><symbol id="m" viewBox="0 0 24 24"><path fill="currentColor" d="M16 2c0 3-2 5-4 5 0-3 2-5 4-5m3 14c-1 3-3 6-5 5-2-1-3-1-5 0-3 1-6-4-6-8 0-5 4-7 7-5 2 1 3-1 6-1 1 0 3 1 4 2-4 2-4 5-1 7"/></symbol></defs>
+<rect width="1100" height="610" rx="24" fill="#1c1e22"/>
+<path d="M24 0h186v610H24Q0 610 0 586V24Q0 0 24 0" fill="#25272c"/>
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Microsoft YaHei,sans-serif">
+<rect x="26" y="30" width="43" height="43" rx="13" fill="#4097f7"/><path d="m36 58 6-16h22l-6 16z" fill="none" stroke="white" stroke-width="2"/>
+<text x="82" y="51" fill="#f6f6f7" font-size="25" font-weight="700">屏间</text><text x="83" y="70" fill="#aab0bc" font-size="10">DisplayBridge</text>
+<text x="27" y="122" fill="#9aa1ae" font-size="12">工作空间</text><rect x="15" y="138" width="180" height="42" rx="10" fill="#459afb"/>
+<g fill="#f2f4f8" font-size="14"><text x="36" y="165">▣　显示器</text><text x="36" y="217">▦　场景与循环</text><text x="36" y="269">⌘　快捷键</text><text x="36" y="321">⌨　键盘</text><text x="36" y="373">◉　鼠标</text><text x="36" y="425">▤　复制内容</text><text x="36" y="477">⚙　设置</text></g>
+<text x="244" y="54" fill="#f5f6f8" font-size="23" font-weight="600">你的桌面，随手切换。</text><text x="244" y="82" fill="#9ea6b4" font-size="13">Windows 与 Mac · 同一个工作空间</text>
+<g stroke="#3a3f48" fill="#282b31"><rect x="244" y="112" width="393" height="292" rx="18"/><rect x="657" y="112" width="409" height="292" rx="18"/></g>
+<g fill="#f3f4f7" font-size="14" font-weight="600"><text x="266" y="144">显示器 1</text><text x="679" y="144">显示器 2 · 主屏</text></g>
+<rect x="327" y="179" width="226" height="115" rx="7" fill="url(#win)" stroke="#6c7586" stroke-width="5"/><rect x="729" y="183" width="267" height="106" rx="7" fill="url(#mac)" stroke="#6c7586" stroke-width="5"/>
+<g fill="#969fae"><path d="M431 297h18v16h-18zM409 313h62v4h-62zM854 292h18v21h-18zM832 313h62v4h-62z"/></g>
+<use href="#w" x="405" y="221" width="23" height="23" color="#355c83"/><text x="436" y="238" fill="#355c83" font-size="14">Windows</text>
+<use href="#m" x="836" y="222" width="24" height="24" color="#574679"/><text x="865" y="239" fill="#574679" font-size="14">Mac</text>
+<g fill="#1f2227" stroke="#424750"><rect x="267" y="342" width="346" height="39" rx="8"/><rect x="680" y="342" width="363" height="39" rx="8"/></g><rect x="271" y="346" width="167" height="31" rx="6" fill="#3b4f69"/><rect x="865" y="346" width="174" height="31" rx="6" fill="#514766"/>
+<g font-size="12"><text x="304" y="367" fill="#8bc2ff">Windows PC</text><text x="499" y="367" fill="#e3e6ed">Mac</text><text x="721" y="367" fill="#e3e6ed">Windows PC</text><text x="935" y="367" fill="#dbc3ff">Mac</text></g>
+<text x="244" y="442" fill="#b3bbc8" font-size="13">场景</text>
+<g fill="#282b31" stroke="#424750"><rect x="244" y="460" width="258" height="91" rx="12"/><rect x="523" y="460" width="264" height="91" rx="12" stroke="#4b9fff"/><rect x="808" y="460" width="258" height="91" rx="12"/></g>
+<g fill="#3b4350" stroke="#8791a2" stroke-width="2"><rect x="309" y="483" width="53" height="34" rx="3"/><rect x="375" y="483" width="53" height="34" rx="3"/><rect x="589" y="483" width="53" height="34" rx="3"/><rect x="656" y="483" width="53" height="34" rx="3"/><rect x="875" y="483" width="53" height="34" rx="3"/><rect x="942" y="483" width="53" height="34" rx="3"/></g>
+<use href="#w" x="328" y="491" width="16" height="16" color="#65afff"/><use href="#w" x="394" y="491" width="16" height="16" color="#65afff"/><use href="#w" x="608" y="491" width="16" height="16" color="#65afff"/><use href="#m" x="675" y="491" width="16" height="16" color="#c5a1ee"/><use href="#m" x="894" y="491" width="16" height="16" color="#c5a1ee"/><use href="#m" x="961" y="491" width="16" height="16" color="#c5a1ee"/>
+<text x="244" y="584" fill="#929baa" font-size="12">DDC/CI 输入切换　·　独立键鼠跟随　·　双向文本与图片剪贴板</text>
+</g></svg>
