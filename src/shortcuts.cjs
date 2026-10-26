@@ -14,6 +14,13 @@ function normalizeAccelerator(value,platform=process.platform){
 }
 function validateAction(action,profile){
   if(!action||typeof action!=='object')throw Error('缺少执行动作');
+  if(['keyboard-cycle','keyboard-switch','mouse-cycle','mouse-switch'].includes(action.type)){
+    const kind=action.type.split('-')[0],label=kind==='keyboard'?'键盘':'鼠标',channels=profile[kind+'Channels']||{};
+    const configured=profile.devices.filter(d=>Number.isInteger(channels[d.id])&&channels[d.id]>=1&&channels[d.id]<=3);
+    if(action.type.endsWith('-cycle')){if(configured.length<2)throw Error('请先为至少两台电脑配置'+label+'通道');return {type:action.type};}
+    if(!configured.some(d=>d.id===action.deviceId))throw Error('目标电脑的'+label+'通道尚未配置');
+    return {type:action.type,deviceId:action.deviceId};
+  }
   if(action.type==='scene'||action.type==='cycle'){
     if(!profile[action.type==='scene'?'scenes':'cycles'].some(x=>x.id===action.id))throw Error(action.type==='scene'?'找不到对应场景':'找不到对应循环');
     return {type:action.type,id:action.id};

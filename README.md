@@ -16,9 +16,9 @@ DisplayBridge is a local-network workspace switcher for Windows and Apple Silico
 
 | 附件 | 用途 |
 | --- | --- |
-| `DisplayBridge-0.5.0-Windows-x64.zip` | Windows x64 便携版，解压后运行 `DisplayBridge.exe`，保留整个目录 |
-| `DisplayBridge-0.5.0-Mac-arm64.zip` | Apple Silicon Mac，将 `.app` 放入“应用程序”后打开 |
-| `DisplayBridge-0.5.0-Source.zip` | 脱敏源码快照 |
+| `DisplayBridge-0.6.0-Windows-x64.zip` | Windows x64 便携版，解压后运行 `DisplayBridge.exe`，保留整个目录 |
+| `DisplayBridge-0.6.0-Mac-arm64.zip` | Apple Silicon Mac，将 `.app` 放入“应用程序”后打开 |
+| `DisplayBridge-0.6.0-Source.zip` | 脱敏源码快照 |
 | `*.sha256` | 对应附件的 SHA-256 校验值 |
 
 当前为早期版本，安装包未使用商业代码签名，Mac 未公证，系统可能提示无法验证开发者。只运行从可信 Release 获取并核验的文件；也可以从源码构建。已有版本更新前先退出屏间，避免覆盖正在使用的资源包。
@@ -33,6 +33,7 @@ DisplayBridge is a local-network workspace switcher for Windows and Apple Silico
 | 桌面排列 | 拖动显示器顺序，指定联动主屏；排列与名称同步到已配对电脑 |
 | 自动移窗 | 当前窗口所在屏幕切离本机时，移到仍显示本机的另一屏；可关闭 |
 | 快捷键 | 全局快捷键、JSON 导入导出、读取对端配置后逐项勾选合并；检查冲突 |
+| 独立键鼠快捷键 | 单独循环键盘或鼠标，也可指定目标电脑；不切屏，与跟随开关独立 |
 | 键盘跟随 | 独立“键盘”页面，MX Keys 可跟随已确认的主屏切换，默认关闭 |
 | 鼠标跟随 | 独立“鼠标”页面，MX Master 3S 使用自己的开关与通道映射，默认关闭 |
 | 复制内容 | 访问对端最近一条文本／图片，支持自动、切回应用时、手动收集与关闭 |
@@ -50,6 +51,26 @@ DisplayBridge is a local-network workspace switcher for Windows and Apple Silico
 5. 按实际摆放拖动卡片顺序，选择主屏。先验证单屏切换，再配置多屏场景和快捷键。
 6. 需要键鼠跟随时，在对应页面检测设备，配置每台电脑的 Easy-Switch 通道，并在两端分别打开跟随开关。只切副屏不会触发跟随。
 7. 需要直接跨设备粘贴时，在两端设置中开启“双向自动剪贴板”。开启后从新复制的内容开始同步，不回填启动前或重连前的旧内容。
+
+### 独立键鼠快捷键
+
+在“快捷键 → 添加快捷键”选择键盘或鼠标图标：
+
+- **键盘循环／鼠标循环：**根据设备当前所在通道，按已配置通道号码从小到大循环，跳过未配置或离线电脑。
+- **键盘切到指定电脑／鼠标切到指定电脑：**直接选择目标系统；同系统有多台电脑时显示名称区分。目标离线时不发送切换指令。
+
+这些动作只切对应键鼠，不改变显示器，不修改跟随开关。开启主屏跟随时，后续主屏切换仍会按跟随设置执行。两端都需要 0.6.0 或更新版本，且相应通道已配置；如果无法确定当前连接，先唤醒设备并重新检测。
+
+独立动作支持快捷键导入、导出与逐项设备合并。也可供鼠标宏或外部工具调用：
+
+```text
+DisplayBridge.exe --action=keyboard-cycle
+DisplayBridge.exe --action=mouse-cycle
+DisplayBridge.exe --action=keyboard-switch:<设备ID>
+DisplayBridge.exe --action=mouse-switch:<设备ID>
+```
+
+Mac 对应 `open -a DisplayBridge --args --action=keyboard-cycle`。设备 ID 使用本机配置中的标识，日常操作建议通过图形快捷键配置。
 
 关闭窗口后应用继续在后台运行，完全退出请使用托盘／菜单栏的退出按钮。
 
@@ -88,7 +109,7 @@ npm run dist:mac
 
 ## 验证与反馈
 
-0.5.0 已通过 Windows 63 项测试（1 项 Mac 专用测试跳过）和 Mac 64 项测试；另外验证过双屏输入切换、实际键盘／鼠标通道往返、双向文本／图片复制、快捷键合并与编辑暂停。自动测试通过不代表所有显示器和扩展坞都兼容。
+0.6.0 已通过 Windows 69 项测试（1 项 Mac 专用测试跳过）和 Mac 70 项测试；另外验证过双屏输入切换、实际键盘／鼠标通道往返、双向文本／图片复制、快捷键合并与编辑暂停。自动测试通过不代表所有显示器和扩展坞都兼容。
 
 反馈问题请说明应用版本、系统版本、显示器／扩展坞／键鼠型号、预期与实际表现。截图和日志请去除电脑名、IP、序列号、个人路径与剪贴板内容；不要上传配对文件。
 

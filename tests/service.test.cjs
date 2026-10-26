@@ -5,6 +5,17 @@ const os=require('node:os');
 const path=require('node:path');
 const {Service}=require('../src/service.cjs');
 function make(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'displaybridge-test-'));let writes=[];const backend={scan:async()=>[{id:'native',name:'CU34G3X',serial:'test-only',input:16,readable:true,observedAt:Date.now(),inputs:[15,16,17,18]}],set:async(...a)=>writes.push(a)};const s=new Service({dir,backend});t.after(()=>{s.close();fs.rmSync(dir,{recursive:true,force:true});});return {s,writes};}
+
+test('independent input actions never plan monitor writes or follow the primary, and serialize with display actions',async t=>{
+  const {s,writes}=make(t);let release,plans=0,follow=0;
+  s.on('before-switch',()=>plans++);s.onPrimaryConfirmed=async()=>follow++;
+  s.onInputAction=()=>new Promise(r=>release=()=>r({status:'confirmed',message:'Input switched'}));
+  const first=s.execute({type:'mouse-cycle'});await assert.rejects(s.execute({type:'keyboard-cycle'}),/正在切换/);
+  await new Promise(r=>setImmediate(r));release();await first;
+  assert.equal(writes.length,0);assert.equal(plans,0);assert.equal(follow,0);assert.equal(s.lastAction.mouse.status,'confirmed');assert.equal(s.busy,false);
+  s.onInputAction=async()=>({status:'failed',message:'Target offline'});
+  await assert.rejects(s.execute({type:'keyboard-switch',deviceId:'missing'},{force:true}),/offline/);assert.equal(s.lastAction.ok,false);assert.equal(s.busy,false);
+});
 test('scan never assumes the currently selected input belongs to this computer',async t=>{const {s,writes}=make(t);await s.refresh(true);assert.equal(s.profile.monitors.length,1);assert.deepEqual(s.profile.monitors[0].inputs,{});assert.equal(s.states()[s.profile.monitors[0].id].deviceId,null);assert.equal(writes.length,0);});
 test('entire scene is preflighted before the first DDC write',async t=>{const {s,writes}=make(t);await s.refresh(true);const m=s.profile.monitors[0];m.inputs[s.identity.id]=16;const scene=s.profile.scenes.find(x=>Object.values(x.assignments).some(v=>v!==s.identity.id));await assert.rejects(s.execute({type:'scene',id:scene.id}),/输入映射/);assert.equal(writes.length,0);});
 test('offline direct switch returns a confirmation requirement without writing',async t=>{const {s,writes}=make(t);await s.refresh(true);const m=s.profile.monitors[0],other=s.profile.devices.find(d=>d.id!==s.identity.id);m.inputs[other.id]=17;await assert.rejects(s.execute({type:'switch',monitorId:m.id,deviceId:other.id}),e=>e.code==='OFFLINE');assert.equal(writes.length,0);});

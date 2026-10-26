@@ -1,6 +1,6 @@
 {
   "name": "display-bridge",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "屏间 · 局域网显示器切换控制台",
   "author": "DisplayBridge",
   "license": "MIT",

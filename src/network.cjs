@@ -82,6 +82,8 @@ class Network {
       if(req.method==='POST'&&req.url==='/keyboard-follow'&&this.onKeyboardFollow)return reply(200,await this.onKeyboardFollow(data));
       if(req.method==='GET'&&req.url==='/mouse'&&this.getMouse)return reply(200,await this.getMouse());
       if(req.method==='POST'&&req.url==='/mouse-follow'&&this.onMouseFollow)return reply(200,await this.onMouseFollow(data));
+      if(req.method==='POST'&&req.url==='/keyboard-switch'&&this.onKeyboardSwitch)return reply(200,await this.onKeyboardSwitch(data));
+      if(req.method==='POST'&&req.url==='/mouse-switch'&&this.onMouseSwitch)return reply(200,await this.onMouseSwitch(data));
       if(req.method==='GET'&&req.url.split('?')[0]==='/clipboard')return reply(200,this.getClipboard?await this.getClipboard(peer,new URL(req.url,'http://localhost').searchParams.get('after')):{empty:true});
       if(req.method==='POST'&&req.url==='/profile'){await this.onProfile(data,peer.id);return reply(200,{ok:true});}
       if(req.method==='POST'&&req.url==='/switch'){await this.onCommand(data);return reply(200,{ok:true});}

@@ -152,6 +152,18 @@ class Service extends EventEmitter {
   }
   async execute(action,{force=false}={}) {
     if(this.busy)throw Error('正在切换，请稍候');
+    if(['keyboard-cycle','keyboard-switch','mouse-cycle','mouse-switch'].includes(action?.type)){
+      this.busy=true;this.changed();
+      try{
+        if(!this.onInputAction)throw Error('此版本不支持独立键鼠切换');
+        await this.refreshPeers();
+        const result=await this.onInputAction(action),kind=action.type.split('-')[0];
+        this.lastAction={time:Date.now(),ok:result.status==='confirmed',message:result.message,results:[],[kind]:result};
+        if(!this.lastAction.ok)throw Error(result.message);
+        this.log(result.message);
+      }finally{this.busy=false;this.changed();}
+      return this.snapshot();
+    }
     if(!action||!['switch','scene','cycle','monitor-cycle'].includes(action.type))throw Error('未知动作');
     this.busy=true;this.changed();
     try {
