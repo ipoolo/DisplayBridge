@@ -17,6 +17,14 @@ test('independent input actions never plan monitor writes or follow the primary,
   await assert.rejects(s.execute({type:'keyboard-switch',deviceId:'missing'},{force:true}),/offline/);assert.equal(s.lastAction.ok,false);assert.equal(s.busy,false);
 });
 test('scan never assumes the currently selected input belongs to this computer',async t=>{const {s,writes}=make(t);await s.refresh(true);assert.equal(s.profile.monitors.length,1);assert.deepEqual(s.profile.monitors[0].inputs,{});assert.equal(s.states()[s.profile.monitors[0].id].deviceId,null);assert.equal(writes.length,0);});
+
+test('combined cycle preserves per-device partial failure without monitor actions or changing follow preferences',async t=>{
+  const {s,writes}=make(t),before=structuredClone(s.preferences);let monitorPlans=0;
+  s.on('before-switch',()=>monitorPlans++);s.onInputAction=async()=>({status:'failed',message:'Mouse failed',targetDeviceId:'target',keyboard:{status:'confirmed'},mouse:{status:'failed'}});
+  await assert.rejects(s.execute({type:'input-cycle'}),/Mouse failed/);
+  assert.equal(s.lastAction.ok,false);assert.equal(s.lastAction.keyboard.status,'confirmed');assert.equal(s.lastAction.mouse.status,'failed');assert.equal(s.lastAction.targetDeviceId,'target');
+  assert.equal(s.busy,false);assert.equal(writes.length,0);assert.equal(monitorPlans,0);assert.deepEqual(s.preferences,before);
+});
 test('entire scene is preflighted before the first DDC write',async t=>{const {s,writes}=make(t);await s.refresh(true);const m=s.profile.monitors[0];m.inputs[s.identity.id]=16;const scene=s.profile.scenes.find(x=>Object.values(x.assignments).some(v=>v!==s.identity.id));await assert.rejects(s.execute({type:'scene',id:scene.id}),/输入映射/);assert.equal(writes.length,0);});
 test('offline direct switch returns a confirmation requirement without writing',async t=>{const {s,writes}=make(t);await s.refresh(true);const m=s.profile.monitors[0],other=s.profile.devices.find(d=>d.id!==s.identity.id);m.inputs[other.id]=17;await assert.rejects(s.execute({type:'switch',monitorId:m.id,deviceId:other.id}),e=>e.code==='OFFLINE');assert.equal(writes.length,0);});
 test('no-op switch is confirmed without DDC write',async t=>{const {s,writes}=make(t);await s.refresh(true);const m=s.profile.monitors[0];m.inputs[s.identity.id]=16;await s.execute({type:'switch',monitorId:m.id,deviceId:s.identity.id});assert.equal(writes.length,0);assert.equal(s.results[m.id].status,'confirmed');});

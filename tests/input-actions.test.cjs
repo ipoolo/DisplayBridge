@@ -43,3 +43,8 @@ test('input shortcut actions survive export/import, reject missing mappings and 
   assert.throws(()=>validateAction({type:'mouse-switch',deviceId:'missing'},p),/通道/);
   assert.throws(()=>validateAction({type:'mouse-cycle'},{...p,mouseChannels:{a:1}}),/至少两台/);
 });
+
+test('combined preflight expectations reject a changed source or revision before a standalone write',async()=>{
+  const f=fixture();assert.equal((await f.a.manual({type:'keyboard-switch',deviceId:'a'},{revision:'old',sourceDeviceId:'b'})).status,'failed');
+  assert.equal((await f.a.manual({type:'keyboard-switch',deviceId:'a'},{revision:'revision',sourceDeviceId:'a'})).status,'failed');assert.equal(f.writes.length,0);
+});

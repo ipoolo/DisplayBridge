@@ -12,6 +12,7 @@ const {createClipboardAdapter}=require('./electron-clipboard.cjs');
 const {exportShortcuts,planImport,planSelection,validateAction}=require('./shortcuts.cjs');
 const {KeyboardProbe,inferChannels}=require('./keyboard-probe.cjs');
 const {KeyboardFollow}=require('./keyboard-follow.cjs');
+const {cycleInputs}=require('./input-cycle.cjs');
 const {ShortcutSuspension}=require('./shortcut-suspension.cjs');
 const smoke=process.argv.includes('--smoke');
 let win,tray,trayWindow,service,sharing,keyboardProbe,keyboardFollow,mouseProbe,mouseFollow,shortcutSuspension,quitting=false,shortcutStatus={},broadcastTimer,windowSwitchPlan;
@@ -113,7 +114,7 @@ async function start(){
     service.network.onMouseFollow=data=>mouseFollow.receive(data);
     service.network.onKeyboardSwitch=data=>keyboardFollow.receiveManual(data);
     service.network.onMouseSwitch=data=>mouseFollow.receiveManual(data);
-    service.onInputAction=action=>(action.type.startsWith('mouse-')?mouseFollow:keyboardFollow).manual(action);
+    service.onInputAction=action=>action.type==='input-cycle'?cycleInputs(service,keyboardFollow,mouseFollow):(action.type.startsWith('mouse-')?mouseFollow:keyboardFollow).manual(action);
     service.onPrimaryConfirmed=async target=>{
       const result=await keyboardFollow.follow(target);
       if(result.status==='failed'&&Notification.isSupported())new Notification({title:'屏间 · 键盘跟随',body:result.message}).show();
@@ -161,8 +162,8 @@ async function start(){
   handle('profile',async(p,rev)=>{await service.saveProfile(p,rev);return {ok:true,state:snapshot()};});
   const savePreferences=async p=>{
     if(!p||!['system','light','dark'].includes(p.theme)||!Array.isArray(p.shortcuts)||p.shortcuts.length>100)throw Error('设置无效');
-    for(const s of p.shortcuts)if(typeof s.id!=='string'||typeof s.accelerator!=='string'||s.accelerator.length>100||!s.action||!['switch','scene','cycle','monitor-cycle','keyboard-cycle','keyboard-switch','mouse-cycle','mouse-switch'].includes(s.action.type))throw Error('快捷键配置无效');
-    for(const s of p.shortcuts)if(/^(keyboard|mouse)-(cycle|switch)$/.test(s.action.type)&&!service.preferences.shortcuts.some(old=>old.id===s.id&&JSON.stringify(old.action)===JSON.stringify(s.action)))validateAction(s.action,service.profile);
+    for(const s of p.shortcuts)if(typeof s.id!=='string'||typeof s.accelerator!=='string'||s.accelerator.length>100||!s.action||!['switch','scene','cycle','monitor-cycle','input-cycle','keyboard-cycle','keyboard-switch','mouse-cycle','mouse-switch'].includes(s.action.type))throw Error('快捷键配置无效');
+    for(const s of p.shortcuts)if((s.action.type==='input-cycle'||/^(keyboard|mouse)-(cycle|switch)$/.test(s.action.type))&&!service.preferences.shortcuts.some(old=>old.id===s.id&&JSON.stringify(old.action)===JSON.stringify(s.action)))validateAction(s.action,service.profile);
     if(!smoke&&Boolean(p.launchAtLogin)!==service.preferences.launchAtLogin)app.setLoginItemSettings({openAtLogin:Boolean(p.launchAtLogin),args:app.isPackaged?['--background']:[app.getAppPath(),'--background']});
     if(p.clipboardMode!==undefined&&!['auto','focus','manual','off'].includes(p.clipboardMode))throw Error('复制同步方式无效');
     if(p.clipboardAutoSync!==undefined&&typeof p.clipboardAutoSync!=='boolean')throw Error('自动剪贴板同步设置无效');
@@ -244,7 +245,7 @@ async function start(){
   const command=process.argv.find(a=>a.startsWith('--action='));if(command)await runCli(command.substring(9));
   if(smoke)await smokeTest();
 }
-async function runCli(value){try{const parts=value.split(':');const action=/^(keyboard|mouse)-(cycle|switch)$/.test(parts[0])?(parts[0].endsWith('-cycle')?{type:parts[0]}:{type:parts[0],deviceId:parts[1]}):parts[0]==='monitor-cycle'?{type:'monitor-cycle',monitorId:parts[1]}:parts[0]==='switch'?{type:'switch',monitorId:parts[1],deviceId:parts[2]}:{type:parts[0],id:parts[1]};await execute(action);}catch(e){service.log(e.message,'error');}}
+async function runCli(value){try{const parts=value.split(':');const action=parts[0]==='input-cycle'?{type:'input-cycle'}:/^(keyboard|mouse)-(cycle|switch)$/.test(parts[0])?(parts[0].endsWith('-cycle')?{type:parts[0]}:{type:parts[0],deviceId:parts[1]}):parts[0]==='monitor-cycle'?{type:'monitor-cycle',monitorId:parts[1]}:parts[0]==='switch'?{type:'switch',monitorId:parts[1],deviceId:parts[2]}:{type:parts[0],id:parts[1]};await execute(action);}catch(e){service.log(e.message,'error');}}
 async function smokeTest(){
   const dir=path.join(__dirname,'../artifacts');fs.mkdirSync(dir,{recursive:true});
   const errors=[];win.webContents.on('console-message',event=>{if(event.level==='error')errors.push(event.message);});

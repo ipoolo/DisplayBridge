@@ -14,6 +14,11 @@ function normalizeAccelerator(value,platform=process.platform){
 }
 function validateAction(action,profile){
   if(!action||typeof action!=='object')throw Error('缺少执行动作');
+  if(action.type==='input-cycle'){
+    const valid=n=>Number.isInteger(n)&&n>=1&&n<=3;
+    if(profile.devices.filter(d=>valid(profile.keyboardChannels?.[d.id])&&valid(profile.mouseChannels?.[d.id])).length<2)throw Error('请先为至少两台电脑同时配置键盘和鼠标通道');
+    return {type:'input-cycle'};
+  }
   if(['keyboard-cycle','keyboard-switch','mouse-cycle','mouse-switch'].includes(action.type)){
     const kind=action.type.split('-')[0],label=kind==='keyboard'?'键盘':'鼠标',channels=profile[kind+'Channels']||{};
     const configured=profile.devices.filter(d=>Number.isInteger(channels[d.id])&&channels[d.id]>=1&&channels[d.id]<=3);

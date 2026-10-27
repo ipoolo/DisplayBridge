@@ -16,9 +16,9 @@ DisplayBridge is a local-network workspace switcher for Windows and Apple Silico
 
 | 附件 | 用途 |
 | --- | --- |
-| `DisplayBridge-0.6.0-Windows-x64.zip` | Windows x64 便携版，解压后运行 `DisplayBridge.exe`，保留整个目录 |
-| `DisplayBridge-0.6.0-Mac-arm64.zip` | Apple Silicon Mac，将 `.app` 放入“应用程序”后打开 |
-| `DisplayBridge-0.6.0-Source.zip` | 脱敏源码快照 |
+| `DisplayBridge-0.7.0-Windows-x64.zip` | Windows x64 便携版，解压后运行 `DisplayBridge.exe`，保留整个目录 |
+| `DisplayBridge-0.7.0-Mac-arm64.zip` | Apple Silicon Mac，将 `.app` 放入“应用程序”后打开 |
+| `DisplayBridge-0.7.0-Source.zip` | 脱敏源码快照 |
 | `*.sha256` | 对应附件的 SHA-256 校验值 |
 
 当前为早期版本，安装包未使用商业代码签名，Mac 未公证，系统可能提示无法验证开发者。只运行从可信 Release 获取并核验的文件；也可以从源码构建。已有版本更新前先退出屏间，避免覆盖正在使用的资源包。
@@ -52,18 +52,20 @@ DisplayBridge is a local-network workspace switcher for Windows and Apple Silico
 6. 需要键鼠跟随时，在对应页面检测设备，配置每台电脑的 Easy-Switch 通道，并在两端分别打开跟随开关。只切副屏不会触发跟随。
 7. 需要直接跨设备粘贴时，在两端设置中开启“双向自动剪贴板”。开启后从新复制的内容开始同步，不回填启动前或重连前的旧内容。
 
-### 独立键鼠快捷键
+### 键鼠快捷键
 
 在“快捷键 → 添加快捷键”选择键盘或鼠标图标：
 
+- **键鼠同步循环（0.7.0）：**以鼠标当前连接为起点，按鼠标通道顺序选择下一台在线且键盘、鼠标通道都已配置的电脑，两者切到同一目标。例如鼠标在 Windows、键盘在 Mac，执行后两者都到 Mac。分别确认结果，部分失败不会显示全部成功；不自动回退已切换的设备。
 - **键盘循环／鼠标循环：**根据设备当前所在通道，按已配置通道号码从小到大循环，跳过未配置或离线电脑。
 - **键盘切到指定电脑／鼠标切到指定电脑：**直接选择目标系统；同系统有多台电脑时显示名称区分。目标离线时不发送切换指令。
 
-这些动作只切对应键鼠，不改变显示器，不修改跟随开关。开启主屏跟随时，后续主屏切换仍会按跟随设置执行。两端都需要 0.6.0 或更新版本，且相应通道已配置；如果无法确定当前连接，先唤醒设备并重新检测。
+这些动作只切对应键鼠，不改变显示器，不修改跟随开关。开启主屏跟随时，后续主屏切换仍会按跟随设置执行。独立动作两端都需要 0.6.0 或更新版本；使用同步循环建议两端均更新至 0.7.0，且相应通道已配置；如果无法确定当前连接，先唤醒设备并重新检测。
 
 独立动作支持快捷键导入、导出与逐项设备合并。也可供鼠标宏或外部工具调用：
 
 ```text
+DisplayBridge.exe --action=input-cycle
 DisplayBridge.exe --action=keyboard-cycle
 DisplayBridge.exe --action=mouse-cycle
 DisplayBridge.exe --action=keyboard-switch:<设备ID>
@@ -109,7 +111,7 @@ npm run dist:mac
 
 ## 验证与反馈
 
-0.6.0 已通过 Windows 69 项测试（1 项 Mac 专用测试跳过）和 Mac 70 项测试；另外验证过双屏输入切换、实际键盘／鼠标通道往返、双向文本／图片复制、快捷键合并与编辑暂停。自动测试通过不代表所有显示器和扩展坞都兼容。
+0.7.0 已通过 Windows 77 项测试（1 项 Mac 专用测试跳过）和 Mac 78 项测试；另外验证过双屏输入切换、实际键盘／鼠标通道往返、双向文本／图片复制、快捷键合并与编辑暂停。自动测试通过不代表所有显示器和扩展坞都兼容。
 
 反馈问题请说明应用版本、系统版本、显示器／扩展坞／键鼠型号、预期与实际表现。截图和日志请去除电脑名、IP、序列号、个人路径与剪贴板内容；不要上传配对文件。
 

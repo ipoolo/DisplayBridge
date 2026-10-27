@@ -30,12 +30,13 @@ class KeyboardFollow{
       return await this.probe.switchTo(this.channel(data.targetDeviceId));
     }finally{this.busy=false;}
   }
-  async manual(action){
+  async manual(action,expected={}){
     const service=this.service;
     try{
       if(this.busy)throw Error('键盘正在切换，请稍候');
       if(![this.kind+'-switch',this.kind+'-cycle'].includes(action?.type))throw Error('不支持的键盘动作');
       const revision=service.profile.revision;
+      if(expected.revision!==undefined&&expected.revision!==revision)throw Error('键盘配置已变化，请重试');
       const configured=service.profile.devices.filter(d=>Number.isInteger(this.channel(d.id))).sort((a,b)=>this.channel(a.id)-this.channel(b.id));
       if(action.type.endsWith('-switch')&&(!configured.some(d=>d.id===action.deviceId)||!service.online().has(action.deviceId)))throw Error('目标电脑离线或键盘通道未配置');
       const ids=[service.identity.id,...service.peers.filter(p=>service.online().has(p.id)).map(p=>p.id)];
@@ -43,6 +44,7 @@ class KeyboardFollow{
       const attached=checks.filter(r=>r.probe?.status==='ready');
       if(attached.length!==1)throw Error(attached.length?'多台电脑报告键盘在线，未执行切换':'未找到可控制的键盘，请唤醒并重新检测');
       const source=attached[0];
+      if(expected.sourceDeviceId!==undefined&&source.deviceId!==expected.sourceDeviceId)throw Error('键盘连接已变化，请重新执行同步循环');
       if(source.probe.currentChannel!==this.channel(source.deviceId))throw Error('当前键盘通道与配置不一致');
       let targetId=action.deviceId;
       if(action.type.endsWith('-cycle')){
