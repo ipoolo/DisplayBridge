@@ -6,23 +6,28 @@ const {randomUUID}=require('node:crypto');
 const {createProfile,validateProfile,deriveState,chooseNextScene,chooseNextDevice,adoptDevice,cleanName,ensureQuickScenes}=require('./core.cjs');
 const {Network,addresses}=require('./network.cjs');
 const {exportShortcuts,planImport}=require('./shortcuts.cjs');
+const {atomic,loadSettings}=require('./storage.cjs');
+const {advance,pristine,canReceive}=require('./profile-sync.cjs');
+const {rebindDevice,rebindShortcuts}=require('./device-identity.cjs');
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-function atomic(file,value){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file+'.tmp',value,{mode:0o600});fs.renameSync(file+'.tmp',file);}
 class Service extends EventEmitter {
   constructor({dir,backend,platform=process.platform,codec=null}) {
     super();Object.assign(this,{dir,backend,codec});this.file=path.join(dir,'settings.json');this.secretFile=path.join(dir,'peers.secure');
-    let saved={};if(fs.existsSync(this.file))saved=JSON.parse(fs.readFileSync(this.file,'utf8'));
+    const {saved,warning}=loadSettings(this.file);this.storageWarning=warning;
     this.identity=saved.identity||{id:randomUUID(),name:os.hostname(),os:platform==='darwin'?'macOS':'Windows'};
     this.profile=saved.profile?validateProfile(saved.profile):createProfile(this.identity);
+    this.profile.userEdited??=Boolean(saved.profile);this.profile.syncHistory??=[];
     this.preferences={theme:'system',pollSeconds:5,launchAtLogin:false,compactMode:true,autoMoveWindow:true,clipboardMode:'auto',clipboardAutoSync:false,keyboardFollow:false,mouseFollow:false,shortcuts:[],...saved.preferences};
     this.peers=[];this.secretError=null;
     if(fs.existsSync(this.secretFile))try{const raw=fs.readFileSync(this.secretFile);this.peers=JSON.parse(codec?codec.decode(raw):raw.toString());}catch{this.secretError='无法解密已保存的配对，请重新配对';}
     this.local=[];this.remote=new Map();this.logs=[];this.results={};this.lastAction=null;this.busy=false;this.localError=null;this.scanPromise=null;this.networkError=null;this.syncStatus={};
-    this.network=new Network({identity:this.identity,getPeers:()=>this.peers,savePeer:p=>this.savePeer(p),removePeer:id=>this.removePeer(id),getStatus:async fresh=>{if(fresh)await this.refresh();return this.publicStatus();},getShortcuts:()=>({device:this.identity,configuration:exportShortcuts(this.preferences.shortcuts,platform)}),onProfile:p=>this.receiveProfile(p),onCommand:d=>this.remoteSwitch(d),onChange:()=>this.changed()});
+    this.network=new Network({identity:this.identity,getPeers:()=>this.peers,savePeer:p=>this.savePeer(p),removePeer:id=>this.removePeer(id),getStatus:async fresh=>{if(fresh)await this.refresh();return this.publicStatus();},getProfile:()=>this.sharedProfile(),getShortcuts:()=>({device:this.identity,configuration:exportShortcuts(this.preferences.shortcuts,platform)}),onProfile:(p,id)=>this.receiveProfile(p,id),onCommand:d=>this.remoteSwitch(d),onChange:()=>this.changed()});
     this.persist();
+    if(warning)this.log(warning,'warning');
   }
   persist(){atomic(this.file,JSON.stringify({identity:this.identity,profile:this.profile,preferences:this.preferences},null,2));}
-  persistPeers(){const data=JSON.stringify(this.peers);atomic(this.secretFile,this.codec?this.codec.encode(data):data);}
+  commitProfile(next){const previous=this.profile;this.profile=next;try{this.persist();}catch(e){this.profile=previous;throw e;}}
+  persistPeers(){const data=JSON.stringify(this.peers);atomic(this.secretFile,this.codec?this.codec.encode(data):data);this.secretError=null;}
   changed(){this.emit('change');}
   log(message,type='info'){this.logs.unshift({id:randomUUID(),time:Date.now(),message,type});this.logs=this.logs.slice(0,100);this.changed();}
   async start({network=true}={}) {
@@ -53,7 +58,7 @@ class Service extends EventEmitter {
   async refresh(probe=false) {
     if(this.scanPromise)return this.scanPromise;
     this.scanPromise=(async()=>{
-      try {this.local=await this.backend.scan(probe);this.localError=null;if(this.mergeLocal(this.profile)){this.profile.revision=randomUUID();this.persist();}}
+      try {this.local=await this.backend.scan(probe);this.localError=null;const next=structuredClone(this.profile);if(this.mergeLocal(next))this.commitProfile(advance(next));}
       catch(e){this.localError=e.message;this.local=this.local.map(m=>({...m,readable:false}));}
       this.changed();
     })().finally(()=>{this.scanPromise=null;});return this.scanPromise;
@@ -69,7 +74,14 @@ class Service extends EventEmitter {
         const now=Date.now();
         this.remote.set(p.id,{...result,seenAt:now,monitors:result.monitors.map(m=>({...m,observedAt:now-Math.max(0,Number.isFinite(m.ageMs)?m.ageMs:60000)}))});
         if(endpoint.host!==p.host||endpoint.port!==p.port){p.host=endpoint.host;p.port=endpoint.port;this.persistPeers();}
-      }catch(e){this.remote.set(p.id,{...this.remote.get(p.id),offline:true,seenAt:0,error:e.message});}
+      }catch(e){
+        let message=e.message;
+        if(/尚未配对|失效|身份|对端状态无效/.test(message))try{
+          const hello=await this.network.hello(p);
+          if(hello.device.id!==p.id)message='该地址的设备身份已变化，原配对已保留；若为同一电脑，请重新配对并选择替换旧设备';
+        }catch{}
+        this.remote.set(p.id,{...this.remote.get(p.id),offline:true,seenAt:0,error:message});
+      }
     }));this.changed();
   }
   online(){return new Set([this.identity.id,...[...this.remote].filter(([,s])=>Date.now()-s.seenAt<15000).map(([id])=>id)]);}
@@ -80,9 +92,20 @@ class Service extends EventEmitter {
   }
   states(){const obs=this.observations();return Object.fromEntries(this.profile.monitors.map(m=>[m.id,deriveState(m,obs)]));}
   snapshot(){return {identity:this.identity,profile:this.profile,preferences:this.preferences,states:this.states(),local:this.local,remote:Object.fromEntries(this.remote),online:[...this.online()],peers:this.peers.map(({inboundToken,outboundToken,...p})=>p),discovered:[...this.network.discovered.values()],addresses:addresses(),port:this.network.port,pairing:this.network.pin,networkError:this.networkError||this.network.error||this.secretError,localError:this.localError,logs:this.logs,results:this.results,lastAction:this.lastAction,busy:this.busy,syncStatus:this.syncStatus};}
-  savePeer(peer){this.peers=this.peers.filter(p=>p.id!==peer.id);this.peers.push(peer);adoptDevice(this.profile,{id:peer.id,name:peer.name,os:peer.os});this.profile.revision=randomUUID();this.persistPeers();this.persist();this.log('已配对 '+peer.name);}
+  savePeer(peer){this.peers=this.peers.filter(p=>p.id!==peer.id);this.peers.push(peer);const next=structuredClone(this.profile),before=JSON.stringify(next);adoptDevice(next,{id:peer.id,name:peer.name,os:peer.os});this.persistPeers();if(JSON.stringify(next)!==before)this.commitProfile(advance(next));this.log('已配对 '+peer.name);}
   removePeer(id){this.peers=this.peers.filter(p=>p.id!==id);this.remote.delete(id);this.persistPeers();this.changed();}
-  async pair(host,port,code){await this.network.pair(host,port,code);await this.refreshPeers();await this.sync();return this.snapshot();}
+  async pair(host,port,code,replaceId){
+    const old=replaceId?this.peers.find(p=>p.id===replaceId):null;if(replaceId&&!old)throw Error('待替换的配对不存在');
+    const device=await this.network.pair(host,port,code);
+    if(old&&old.id!==device.id){
+      const next=rebindDevice(structuredClone(this.profile),old.id,device.id),preferences=this.preferences;
+      this.preferences={...preferences,shortcuts:rebindShortcuts(preferences.shortcuts,old.id,device.id)};
+      try{this.commitProfile(advance(next,true));}catch(e){this.preferences=preferences;throw e;}
+      // Revoke only the obsolete local record; never send an unpair to the shared address.
+      this.removePeer(old.id);
+    }
+    await this.refreshPeers();await this.sync();return this.snapshot();
+  }
   async readPeerShortcuts(peerId){
     const peer=this.peers.find(p=>p.id===peerId);if(!peer)throw Error('请先配对这台电脑');
     await this.refreshPeers();if(!this.online().has(peerId))throw Error('这台电脑当前离线，请确认对方屏间正在运行');
@@ -92,29 +115,54 @@ class Service extends EventEmitter {
     return {sourceId:peerId,data:response.configuration};
   }
   async unpair(id){const peer=this.peers.find(p=>p.id===id);if(peer)try{await this.network.call(peer,'POST','/unpair',{});}catch{}this.removePeer(id);}
-  receiveProfile(incoming) {
+  sharedProfile(){return {syncVersion:2,profile:this.profile,bootstrap:pristine(this.profile,this.preferences)};}
+  receiveProfile(data,peerId) {
     if(this.busy)throw Error('对端正在切换，请稍后同步配置');
-    const profile=validateProfile(structuredClone(incoming));
+    if(data?.syncVersion!==2)throw Error('已阻止旧版客户端覆盖配置，请将两端更新到 0.7.1 或更高版本');
+    const profile=validateProfile(structuredClone(data.profile));
     if(!profile.devices.some(d=>d.id===this.identity.id))throw Error('配置中缺少本机');
-    this.mergeLocal(profile);this.profile=profile;this.persist();this.log('已接收共享配置');
+    if(peerId&&!profile.devices.some(d=>d.id===peerId))throw Error('配置中缺少发送设备');
+    canReceive(this.profile,profile,{baseRevision:data.baseRevision,replace:data.replace===true,bootstrap:pristine(this.profile,this.preferences)});
+    if(this.mergeLocal(profile))advance(profile);
+    this.commitProfile(profile);this.log('已接收共享配置');return this.sharedProfile();
   }
-  async sync() {
-    for(const peer of this.peers)try{
+  async peerProfile(peer){
+    const data=await this.network.call(peer,'GET','/profile');
+    if(data?.syncVersion!==2)throw Error('请将两端更新到 0.7.1 或更高版本再同步配置');
+    validateProfile(data.profile);return data;
+  }
+  async syncTo(peer,{replace=false,expectedBase,expectedLocal}={}){
+      if(expectedLocal&&expectedLocal!==this.profile.revision)throw Error('本机配置已变化，请重新确认');
+      const remote=await this.peerProfile(peer);
+      if(expectedBase&&expectedBase!==remote.profile.revision)throw Error('对端配置已变化，请重新确认');
+      if(expectedLocal&&expectedLocal!==this.profile.revision)throw Error('本机配置已变化，请重新确认');
+      if(!replace&&(remote.profile.syncHistory||[]).includes(this.profile.revision)){
+        this.receiveProfile({syncVersion:2,profile:remote.profile,baseRevision:this.profile.revision},peer.id);
+      }
+      const next=structuredClone(this.profile),before=JSON.stringify(next);
       // Include the peer's native monitor identities using serial, then unique model.
       for(const n of this.remote.get(peer.id)?.monitors||[]) {
-        const matches=this.profile.monitors.filter(m=>(n.serial&&m.serial===n.serial)||cleanName(m.model)===cleanName(n.name));
+        const matches=next.monitors.filter(m=>(n.serial&&m.serial===n.serial)||cleanName(m.model)===cleanName(n.name));
         if(matches.length===1)matches[0].endpoints[peer.id]=n.id;
       }
-      await this.network.call(peer,'POST','/profile',this.profile);this.syncStatus[peer.id]='已同步';
-    }catch(e){this.syncStatus[peer.id]='待同步：'+e.message;}
-    this.persist();this.changed();
+      if(JSON.stringify(next)!==before)this.commitProfile(advance(next));
+      const sent=structuredClone(this.profile);
+      canReceive(remote.profile,sent,{baseRevision:remote.profile.revision,replace,bootstrap:remote.bootstrap===true});
+      const accepted=await this.network.call(peer,'POST','/profile',{syncVersion:2,profile:sent,baseRevision:remote.profile.revision,replace});
+      if(this.profile.revision===sent.revision&&accepted?.profile)this.receiveProfile({syncVersion:2,profile:accepted.profile,baseRevision:sent.revision},peer.id);
+      this.syncStatus[peer.id]='已同步';this.changed();
+  }
+  sync(){
+    const run=async()=>{for(const peer of this.peers)try{await this.syncTo(peer);}catch(e){this.syncStatus[peer.id]='待同步：'+e.message;}this.changed();};
+    this.syncTail=(this.syncTail||Promise.resolve()).then(run,run);return this.syncTail;
   }
   async saveProfile(profile,baseRevision) {
     if(this.busy)throw Error('切换进行中，请稍后保存');
     if(baseRevision!==this.profile.revision)throw Error('配置已更新，请关闭编辑器后重新编辑');
     const next=validateProfile(structuredClone(profile));
     if(!next.devices.some(d=>d.id===this.identity.id))throw Error('不能移除本机');
-    next.revision=randomUUID();this.profile=next;this.persist();this.changed();await this.sync();return this.snapshot();
+    next.revision=this.profile.revision;next.syncHistory=this.profile.syncHistory;
+    this.commitProfile(advance(next,true));this.changed();await this.sync();return this.snapshot();
   }
   async remoteSwitch({monitorId,deviceId,assignments}) {
     if(this.busy)throw Error('对端正忙');

@@ -13,16 +13,8 @@ class NativeBackend {
   serial(fn) { const next=this.tail.then(fn,fn);this.tail=next.catch(()=>{});return next; }
   binary() {
     const file=path.join(this.root,this.platform==='win32'?'display-ddc.exe':'m1ddc');
-    if(!fs.existsSync(file)) throw Error(this.platform==='darwin'?'Mac 控制组件未构建，请运行随附的 Mac 启动脚本':'Windows 控制组件缺失，请重新构建 native:win');
+    if(!fs.existsSync(file)) throw Error('显示器控制组件缺失，请重新安装完整的屏间安装包');
     return file;
-  }
-  async ensureMacHelper() {
-    if(this.platform!=='darwin'||fs.existsSync(path.join(this.root,'m1ddc'))||!this.macSources)return;
-    try{await run('/usr/bin/xcode-select',['-p'],5000);}catch{throw Error('首次运行需 Apple Command Line Tools：在 Mac 终端执行 xcode-select --install，安装完成后点击刷新状态');}
-    const vendor=path.join(this.macSources,'vendor');fs.mkdirSync(this.root,{recursive:true});
-    const output=path.join(this.root,'m1ddc.tmp');
-    const args=['clang','-arch','arm64','-mmacosx-version-min=13.0','-O2','-fmodules','-DMAX_DISPLAYS=16','-I',path.join(vendor,'headers'),path.join(this.macSources,'DisplayDdc.m'),path.join(vendor,'sources/i2c.m'),path.join(vendor,'sources/ioregistry.m'),'-framework','Foundation','-framework','IOKit','-framework','CoreGraphics','-framework','ApplicationServices','-framework','CoreDisplay','-o',output];
-    await run('/usr/bin/xcrun',args,60000);fs.chmodSync(output,0o755);fs.renameSync(output,path.join(this.root,'m1ddc'));
   }
   scan(probe=false) { return this.serial(async()=>{
     if(this.platform==='win32') {
@@ -32,7 +24,6 @@ class NativeBackend {
       return this.cache;
     }
     if(this.platform==='darwin') {
-      await this.ensureMacHelper();
       const rows=JSON.parse(await run(this.binary(),['displaybridge-list']));
       if(!Array.isArray(rows)) throw Error('Mac 显示器枚举失败');
       this.cache=rows.map(r=>({...r,inputs:[],observedAt:Date.now()}));return this.cache;

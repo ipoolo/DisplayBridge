@@ -1,6 +1,8 @@
 const {app,BrowserWindow,ipcMain,Menu,Tray,nativeImage,globalShortcut,dialog,nativeTheme,safeStorage,Notification,screen,clipboard,ClipboardItem,shell}=require('electron');
 const path=require('node:path');
 const fs=require('node:fs');
+const os=require('node:os');
+const {dataDirectory,legacyCandidates,migrateLegacy}=require('./storage.cjs');
 const {pathToFileURL}=require('node:url');
 const {NativeBackend}=require('./native.cjs');
 const {Service}=require('./service.cjs');
@@ -15,7 +17,10 @@ const {KeyboardFollow}=require('./keyboard-follow.cjs');
 const {cycleInputs}=require('./input-cycle.cjs');
 const {ShortcutSuspension}=require('./shortcut-suspension.cjs');
 const smoke=process.argv.includes('--smoke');
-let win,tray,trayWindow,service,sharing,keyboardProbe,keyboardFollow,mouseProbe,mouseFollow,shortcutSuspension,quitting=false,shortcutStatus={},broadcastTimer,windowSwitchPlan;
+const legacyData=app.getPath('userData');
+const stableData=dataDirectory(process.platform,os.homedir(),legacyData);
+if(!smoke){fs.mkdirSync(stableData,{recursive:true,mode:0o700});app.setPath('userData',stableData);}
+let loginItemStatus,win,tray,trayWindow,service,sharing,keyboardProbe,keyboardFollow,mouseProbe,mouseFollow,shortcutSuspension,quitting=false,shortcutStatus={},broadcastTimer,windowSwitchPlan;
 if(smoke) app.setPath('userData',path.join(__dirname,'../artifacts/smoke-profile'));
 if(!app.requestSingleInstanceLock()){app.quit();}else{
 app.on('second-instance',(_,argv)=>{const command=argv.find(a=>a.startsWith('--action='));if(command)runCli(command.substring(9));else show();});
@@ -26,7 +31,7 @@ app.whenReady().then(start).catch(e=>{console.error(e);if(!smoke)dialog.showErro
 }
 function show(){if(win){win.show();win.focus();}}
 function localDisplays(){return screen.getAllDisplays().map(d=>({...d,physicalBounds:process.platform==='win32'?screen.dipToScreenRect(null,d.bounds):d.bounds}));}
-function snapshot(){const displays=localDisplays();return {...service.snapshot(),clipboard:sharing?.status(),keyboardProbe:keyboardProbe?.result,keyboardFollow:keyboardFollow?.result,keyboardProbeBusy:Boolean(keyboardProbe?.pending),mouseProbe:mouseProbe?.result,mouseFollow:mouseFollow?.result,mouseProbeBusy:Boolean(mouseProbe?.pending),shortcutStatus,shortcutsPaused:Boolean(shortcutSuspension?.active),registeredShortcutCount:service.preferences.shortcuts.filter(s=>{try{return globalShortcut.isRegistered(s.accelerator);}catch{return false;}}).length,smoke,appVersion:app.getVersion(),windowBounds:win?.getBounds(),windowMovable:win?.isMovable(),windowDisplayId:win?screen.getDisplayMatching(win.getBounds()).id:null,displayBindings:linkDisplays(service.local,displays)};}
+function snapshot(){const displays=localDisplays();return {...service.snapshot(),clipboard:sharing?.status(),keyboardProbe:keyboardProbe?.result,keyboardFollow:keyboardFollow?.result,keyboardProbeBusy:Boolean(keyboardProbe?.pending),mouseProbe:mouseProbe?.result,mouseFollow:mouseFollow?.result,mouseProbeBusy:Boolean(mouseProbe?.pending),shortcutStatus,shortcutsPaused:Boolean(shortcutSuspension?.active),registeredShortcutCount:service.preferences.shortcuts.filter(s=>{try{return globalShortcut.isRegistered(s.accelerator);}catch{return false;}}).length,smoke,startup:loginItemStatus,storageDirectory:service.dir,appVersion:app.getVersion(),windowBounds:win?.getBounds(),windowMovable:win?.isMovable(),windowDisplayId:win?screen.getDisplayMatching(win.getBounds()).id:null,displayBindings:linkDisplays(service.local,displays)};}
 function moveWindowIfNeeded(assignments={}){
   if(smoke||!service.preferences.autoMoveWindow||!win?.isVisible()||win.isMinimized())return;
   const displays=localDisplays(),bounds=win.getBounds(),target=relocationTarget({profile:service.profile,states:service.states(),identityId:service.identity.id,bindings:linkDisplays(service.local,displays),currentDisplayId:screen.getDisplayMatching(bounds).id,assignments,displays});
@@ -95,15 +100,33 @@ function showTrayPanel(){
   trayWindow.webContents.send('tray:changed',snapshot());trayWindow.show();trayWindow.focus();
 }
 async function start(){
+  if(!smoke&&process.platform==='win32'&&!fs.existsSync(path.join(stableData,'settings.json'))&&!fs.existsSync(path.join(stableData,'backups'))){
+    const packageRoot=path.join(os.homedir(),'AppData','Local','Packages');
+    const packaged=fs.existsSync(packageRoot)?fs.readdirSync(packageRoot).filter(n=>n.startsWith('OpenAI.Codex_')).map(n=>path.join(packageRoot,n,'LocalCache','Roaming','display-bridge')):[];
+    const candidates=legacyCandidates([legacyData,...packaged]);
+    let choice=0;
+    if(candidates.length>1){
+      const answer=await dialog.showMessageBox({type:'question',title:'选择要迁移的屏间配置',message:'发现多份旧配置，请选择原来使用的那份。所有原文件都会保留。',detail:candidates.map((c,i)=>`${i+1}. ${c.dir}\n${c.saved.preferences.shortcuts.length} 条快捷键 · ${c.saved.profile.monitors.length} 台显示器`).join('\n\n'),buttons:[...candidates.map((_,i)=>'迁移配置 '+(i+1)),'退出，暂不迁移'],cancelId:candidates.length});
+      choice=answer.response;if(choice===candidates.length){app.quit();return;}
+    }
+    if(candidates[choice]&&migrateLegacy(stableData,candidates[choice].dir)){
+      // Chromium may already have loaded the destination key during ready().
+      // Restart before decrypting credentials with the migrated Local State.
+      app.relaunch();app.exit(0);return;
+    }
+  }
   const packagedNative=path.join(process.resourcesPath,'native');
-  const nativeRoot=app.isPackaged?(process.platform==='darwin'&&!fs.existsSync(path.join(packagedNative,'m1ddc'))?path.join(app.getPath('userData'),'native'):packagedNative):path.join(__dirname,'../native/bin');
+  const nativeRoot=app.isPackaged?packagedNative:path.join(__dirname,'../native/bin');
   const backend=new NativeBackend(nativeRoot);
   keyboardProbe=new KeyboardProbe(app.isPackaged?packagedNative:nativeRoot);
   mouseProbe=new KeyboardProbe(app.isPackaged?packagedNative:nativeRoot,process.platform,undefined,'mouse');
-  if(app.isPackaged&&process.platform==='darwin')backend.macSources=path.join(process.resourcesPath,'native-source');
   const encryptionAvailable=safeStorage.isAsyncEncryptionAvailable?await safeStorage.isAsyncEncryptionAvailable():safeStorage.isEncryptionAvailable();
   const codec=encryptionAvailable?{encode:s=>safeStorage.encryptString(s),decode:b=>safeStorage.decryptString(b)}:null;
   service=new Service({dir:app.getPath('userData'),backend,codec});
+  if(!smoke&&app.isPackaged){
+    try{app.setLoginItemSettings({openAtLogin:service.preferences.launchAtLogin,args:['--background']});loginItemStatus=app.getLoginItemSettings({args:['--background']});}
+    catch(e){service.log('登录时启动设置失败：'+e.message,'error');}
+  }
   shortcutSuspension=new ShortcutSuspension(()=>{if(!smoke&&!quitting)registerShortcuts();service.changed();});
   keyboardFollow=new KeyboardFollow(service,keyboardProbe);
   mouseFollow=new KeyboardFollow(service,mouseProbe,'mouse');
@@ -164,13 +187,14 @@ async function start(){
     if(!p||!['system','light','dark'].includes(p.theme)||!Array.isArray(p.shortcuts)||p.shortcuts.length>100)throw Error('设置无效');
     for(const s of p.shortcuts)if(typeof s.id!=='string'||typeof s.accelerator!=='string'||s.accelerator.length>100||!s.action||!['switch','scene','cycle','monitor-cycle','input-cycle','keyboard-cycle','keyboard-switch','mouse-cycle','mouse-switch'].includes(s.action.type))throw Error('快捷键配置无效');
     for(const s of p.shortcuts)if((s.action.type==='input-cycle'||/^(keyboard|mouse)-(cycle|switch)$/.test(s.action.type))&&!service.preferences.shortcuts.some(old=>old.id===s.id&&JSON.stringify(old.action)===JSON.stringify(s.action)))validateAction(s.action,service.profile);
-    if(!smoke&&Boolean(p.launchAtLogin)!==service.preferences.launchAtLogin)app.setLoginItemSettings({openAtLogin:Boolean(p.launchAtLogin),args:app.isPackaged?['--background']:[app.getAppPath(),'--background']});
+
     if(p.clipboardMode!==undefined&&!['auto','focus','manual','off'].includes(p.clipboardMode))throw Error('复制同步方式无效');
     if(p.clipboardAutoSync!==undefined&&typeof p.clipboardAutoSync!=='boolean')throw Error('自动剪贴板同步设置无效');
     if(p.keyboardFollow!==undefined&&typeof p.keyboardFollow!=='boolean')throw Error('键盘跟随设置无效');
     if(p.keyboardFollow&&(!service.profile.keyboardChannels?.[service.identity.id]||Object.keys(service.profile.keyboardChannels).length<2))throw Error('请先配置本机与另一台电脑的键盘通道');
     if(p.mouseFollow!==undefined&&typeof p.mouseFollow!=='boolean')throw Error('鼠标跟随设置无效');
     if(p.mouseFollow&&(!service.profile.mouseChannels?.[service.identity.id]||Object.keys(service.profile.mouseChannels).length<2))throw Error('请先配置本机与另一台电脑的鼠标通道');
+    if(!smoke&&Boolean(p.launchAtLogin)!==service.preferences.launchAtLogin){const args=app.isPackaged?['--background']:[app.getAppPath(),'--background'];app.setLoginItemSettings({openAtLogin:Boolean(p.launchAtLogin),args});loginItemStatus=app.getLoginItemSettings({args});}
     const previousMode=service.preferences.compactMode,previousClipboard=service.preferences.clipboardMode,previousAutoSync=service.preferences.clipboardAutoSync;
     service.preferences={...service.preferences,theme:p.theme,launchAtLogin:Boolean(p.launchAtLogin),compactMode:typeof p.compactMode==='boolean'?p.compactMode:previousMode,autoMoveWindow:typeof p.autoMoveWindow==='boolean'?p.autoMoveWindow:service.preferences.autoMoveWindow,clipboardMode:p.clipboardMode||previousClipboard,clipboardAutoSync:p.clipboardAutoSync??previousAutoSync,keyboardFollow:p.keyboardFollow??service.preferences.keyboardFollow,mouseFollow:p.mouseFollow??service.preferences.mouseFollow,shortcuts:p.shortcuts};service.persist();nativeTheme.themeSource=p.theme;if(previousMode!==service.preferences.compactMode)resizeMode();if(!smoke){registerShortcuts();if(previousClipboard!==service.preferences.clipboardMode||previousAutoSync!==service.preferences.clipboardAutoSync)sharing.modeChanged();}service.changed();return {ok:true,state:snapshot()};
   };
@@ -216,9 +240,25 @@ async function start(){
   });
   handle('execute',execute);
   handle('pairing-code',()=>{if(service.networkError)throw Error(service.networkError);const pin=service.network.pairingCode();service.changed();return pin;});
-  handle('pair',async d=>{if(!d||typeof d.host!=='string'||typeof d.code!=='string')throw Error('配对信息无效');await service.pair(d.host,Number(d.port),d.code);return {ok:true,state:snapshot()};});
+  handle('pair',async d=>{
+    if(!d||typeof d.host!=='string'||typeof d.code!=='string')throw Error('配对信息无效');
+    const candidates=service.peers.filter(p=>p.host===d.host&&p.port===Number(d.port));let replaceId;
+    if(candidates.length){
+      const answer=await dialog.showMessageBox(win,{type:'question',title:'确认是否为已有电脑',message:'这个地址已有配对记录，是原来的同一台电脑吗？',detail:'IP 地址和端口相同不能证明设备相同。只有你确认是原电脑，且新配对码验证成功后，才会替换旧身份并保留接口、场景和快捷键引用。',buttons:['取消','作为另一台电脑添加',...candidates.map(p=>'替换旧设备：'+p.name)],defaultId:0,cancelId:0});
+      if(answer.response===0)return {ok:false,cancelled:true};if(answer.response>=2)replaceId=candidates[answer.response-2]?.id;
+    }
+    await service.pair(d.host,Number(d.port),d.code,replaceId);registerShortcuts();return {ok:true,state:snapshot()};
+  });
   handle('unpair',async id=>{await service.unpair(id);return {ok:true};});
   handle('sync',async()=>{await service.refreshPeers();await service.sync();return {ok:true,state:snapshot()};});
+  handle('sync-replace',async id=>{
+    const peer=service.peers.find(p=>p.id===id);if(!peer)throw Error('设备未配对');
+    const localRevision=service.profile.revision,remote=await service.peerProfile(peer);
+    const detail=p=>`${p.monitors.length} 台显示器、${p.scenes.length} 个场景、${p.monitors.reduce((n,m)=>n+Object.keys(m.inputs).length,0)} 条接口映射`;
+    const answer=await dialog.showMessageBox(win,{type:'warning',title:'确认共享配置覆盖方向',message:'使用本机配置覆盖 '+peer.name+' 的共享配置？',detail:'本机：'+detail(service.profile)+'\n对方：'+detail(remote.profile)+'\n对方现有共享配置会先备份。两端各自的快捷键和本机设置保留。',buttons:['取消','使用本机配置'],defaultId:0,cancelId:0});
+    if(answer.response!==1)return {ok:false,cancelled:true};
+    await service.syncTo(peer,{replace:true,expectedLocal:localRevision,expectedBase:remote.profile.revision});return {ok:true,state:snapshot()};
+  });
   handle('clipboard-list',()=>sharing.items());
   handle('clipboard-refresh',async()=>{await sharing.pollPeers();return {ok:true,state:snapshot()};});
   handle('clipboard-publish',async()=>{await sharing.capture();return {ok:true,state:snapshot()};});

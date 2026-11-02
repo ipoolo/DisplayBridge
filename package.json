@@ -1,6 +1,6 @@
 {
   "name": "display-bridge",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "屏间 · 局域网显示器切换控制台",
   "author": "DisplayBridge",
   "license": "MIT",
@@ -56,25 +56,9 @@
       "icon": "assets/icon.icns",
       "target": "zip",
       "category": "public.app-category.utilities",
-      "identity": null,
-      "extraResources": [
-        {
-          "from": "native/macos/DisplayDdc.m",
-          "to": "native-source/DisplayDdc.m"
-        },
-        {
-          "from": "vendor/m1ddc",
-          "to": "native-source/vendor",
-          "filter": [
-            "headers/**/*",
-            "sources/i2c.m",
-            "sources/ioregistry.m",
-            "LICENSE",
-            "PINNED_REVISION.txt"
-          ]
-        }
-      ]
-    }
+      "identity": null
+    },
+    "afterPack": "./scripts/verify-runtime.cjs"
   },
   "repository": {
     "type": "git",

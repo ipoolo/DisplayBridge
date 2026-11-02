@@ -16,9 +16,9 @@ DisplayBridge is a local-network workspace switcher for Windows and Apple Silico
 
 | 附件 | 用途 |
 | --- | --- |
-| `DisplayBridge-0.7.0-Windows-x64.zip` | Windows x64 便携版，解压后运行 `DisplayBridge.exe`，保留整个目录 |
-| `DisplayBridge-0.7.0-Mac-arm64.zip` | Apple Silicon Mac，将 `.app` 放入“应用程序”后打开 |
-| `DisplayBridge-0.7.0-Source.zip` | 脱敏源码快照 |
+| `DisplayBridge-0.7.1-Windows-x64.zip` | Windows x64 便携版，解压后运行 `DisplayBridge.exe`，保留整个目录 |
+| `DisplayBridge-0.7.1-Mac-arm64.zip` | Apple Silicon Mac，将 `.app` 放入“应用程序”后打开 |
+| `DisplayBridge-0.7.1-Source.zip` | 脱敏源码快照 |
 | `*.sha256` | 对应附件的 SHA-256 校验值 |
 
 当前为早期版本，安装包未使用商业代码签名，Mac 未公证，系统可能提示无法验证开发者。只运行从可信 Release 获取并核验的文件；也可以从源码构建。已有版本更新前先退出屏间，避免覆盖正在使用的资源包。
@@ -111,7 +111,7 @@ npm run dist:mac
 
 ## 验证与反馈
 
-0.7.0 已通过 Windows 77 项测试（1 项 Mac 专用测试跳过）和 Mac 78 项测试；另外验证过双屏输入切换、实际键盘／鼠标通道往返、双向文本／图片复制、快捷键合并与编辑暂停。自动测试通过不代表所有显示器和扩展坞都兼容。
+0.7.1 已通过 Windows 89 项测试（1 项 Mac 专用测试跳过）和 Mac 90 项测试；另外验证过双屏输入切换、实际键盘／鼠标通道往返、双向文本／图片复制、快捷键合并与编辑暂停。自动测试通过不代表所有显示器和扩展坞都兼容。
 
 反馈问题请说明应用版本、系统版本、显示器／扩展坞／键鼠型号、预期与实际表现。截图和日志请去除电脑名、IP、序列号、个人路径与剪贴板内容；不要上传配对文件。
 
@@ -120,3 +120,11 @@ npm run dist:mac
 ## 许可证与致谢
 
 项目采用 [MIT License](LICENSE)。Apple Silicon DDC 通路基于固定版本的 [m1ddc](https://github.com/waydabber/m1ddc)，保留原作者授权。桌面运行时为 Electron。第三方许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。Windows、Apple、Logitech 等名称与商标属于各自权利人，本项目并非其官方产品。
+
+## 配置保存与启动
+
+Windows 0.7.1 起将配置固定保存在 `%USERPROFILE%\.displaybridge`，避免从打包应用启动和从桌面启动时读到不同的 Roaming AppData。首次迁移会保留原目录；发现多份不同配置时需要选择来源。Mac 继续使用当前用户的 `Library/Application Support/display-bridge`。配置和配对凭据分别保存，修改前自动保留最近 20 份备份；配置损坏时恢复最近有效备份并记录提示，不创建空身份覆盖旧数据。
+
+两端都更新到 0.7.1 后使用带版本检查的共享配置同步。并发修改或不相关的配置会保留双方数据并显示待同步；如需明确覆盖，在设备页选择“用本机配置覆盖”，确认方向和数量后执行。IP 和端口相同不代表同一身份；重新配对可明确选择替换旧设备，必须先通过配对码验证，配置冲突则保留原数据。
+
+在设置中启用“登录时启动”后，应用会在用户登录后于后台运行。运行发布的 Mac 安装包无需打开 Xcode、Codex 或终端；安装包自带显示器与键鼠控制组件，Xcode Command Line Tools 仅用于开发构建。关闭窗口保留托盘／菜单栏，使用退出命令才会停止服务。

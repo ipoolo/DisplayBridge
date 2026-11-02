@@ -22,8 +22,8 @@ function request(host,port,method,route,body,token,timeout=7000) {
 }
 function validIdentity(d){return d&&typeof d.id==='string'&&/^[a-f0-9-]{36}$/i.test(d.id)&&typeof d.name==='string'&&d.name.length>0&&d.name.length<=100&&['Windows','macOS'].includes(d.os);}
 class Network {
-  constructor({identity,getPeers,savePeer,removePeer,getStatus,getShortcuts,onProfile,onCommand,onChange}) {
-    Object.assign(this,{identity,getPeers,savePeer,removePeer,getStatus,getShortcuts,onProfile,onCommand,onChange});
+  constructor({identity,getPeers,savePeer,removePeer,getStatus,getProfile,getShortcuts,onProfile,onCommand,onChange}) {
+    Object.assign(this,{identity,getPeers,savePeer,removePeer,getStatus,getProfile,getShortcuts,onProfile,onCommand,onChange});
     this.discovered=new Map();this.attempts=new Map();this.pin=null;this.port=PORT;this.error=null;
   }
   pairingCode(){this.pin={code:String(randomInt(100000,1000000)),expires:Date.now()+300000};return this.pin;}
@@ -77,6 +77,7 @@ class Network {
         return reply(200,{device:this.identity,token:inboundToken,port:this.port});
       }
       if(req.method==='GET'&&(req.url==='/status'||req.url==='/status?refresh=1'))return reply(200,await this.getStatus(req.url.includes('?refresh=1')));
+      if(req.method==='GET'&&req.url==='/profile'&&this.getProfile)return reply(200,await this.getProfile());
       if(req.method==='GET'&&req.url==='/shortcuts'&&this.getShortcuts)return reply(200,await this.getShortcuts());
       if(req.method==='GET'&&req.url==='/keyboard'&&this.getKeyboard)return reply(200,await this.getKeyboard());
       if(req.method==='POST'&&req.url==='/keyboard-follow'&&this.onKeyboardFollow)return reply(200,await this.onKeyboardFollow(data));
@@ -85,7 +86,7 @@ class Network {
       if(req.method==='POST'&&req.url==='/keyboard-switch'&&this.onKeyboardSwitch)return reply(200,await this.onKeyboardSwitch(data));
       if(req.method==='POST'&&req.url==='/mouse-switch'&&this.onMouseSwitch)return reply(200,await this.onMouseSwitch(data));
       if(req.method==='GET'&&req.url.split('?')[0]==='/clipboard')return reply(200,this.getClipboard?await this.getClipboard(peer,new URL(req.url,'http://localhost').searchParams.get('after')):{empty:true});
-      if(req.method==='POST'&&req.url==='/profile'){await this.onProfile(data,peer.id);return reply(200,{ok:true});}
+      if(req.method==='POST'&&req.url==='/profile'){const result=await this.onProfile(data,peer.id);return reply(200,{ok:true,...result});}
       if(req.method==='POST'&&req.url==='/switch'){await this.onCommand(data);return reply(200,{ok:true});}
       if(req.method==='POST'&&req.url==='/unpair'){this.removePeer(peer.id);return reply(200,{ok:true});}
       reply(404,{error:'未知操作'});
@@ -98,6 +99,7 @@ class Network {
     this.savePeer({...result.device,host,port:result.port,inboundToken,outboundToken:result.token});return result.device;
   }
   call(peer,method,route,body,timeout) {return request(peer.host,peer.port,method,route,body,peer.outboundToken,timeout);}
+  async hello(peer){const result=await request(peer.host,peer.port,'GET','/hello',undefined,undefined,3000);if(!validIdentity(result.device))throw Error('设备信息无效');return result;}
   close(){clearInterval(this.timer);if(this.udp)try{this.udp.close();}catch{}if(this.server)this.server.close();}
 }
 module.exports={Network,request,isLan,addresses,safeEqual};

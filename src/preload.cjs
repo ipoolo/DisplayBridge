@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('bridge',{
   pair:details=>ipcRenderer.invoke('bridge:pair',details),
   unpair:id=>ipcRenderer.invoke('bridge:unpair',id),
   sync:()=>ipcRenderer.invoke('bridge:sync'),
+  replacePeerProfile:id=>ipcRenderer.invoke('bridge:sync-replace',id),
   clipboardList:()=>ipcRenderer.invoke('bridge:clipboard-list'),
   clipboardRefresh:()=>ipcRenderer.invoke('bridge:clipboard-refresh'),
   clipboardPublish:()=>ipcRenderer.invoke('bridge:clipboard-publish'),

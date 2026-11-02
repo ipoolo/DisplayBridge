@@ -13,6 +13,9 @@ function createProfile(device) {
 function validateProfile(p) {
   if (!p || p.version!==1 || !Array.isArray(p.devices)||!Array.isArray(p.monitors)||!Array.isArray(p.groups)||!Array.isArray(p.scenes)||!Array.isArray(p.cycles)) throw Error('配置格式无效');
   if (JSON.stringify(p).length>200000) throw Error('配置过大');
+  if(typeof p.revision!=='string'||!p.revision||p.revision.length>256)throw Error('配置版本无效');
+  if(p.syncHistory!==undefined&&(!Array.isArray(p.syncHistory)||p.syncHistory.length>128||p.syncHistory.some(r=>typeof r!=='string'||r.length>256)))throw Error('配置版本历史无效');
+  if(p.userEdited!==undefined&&typeof p.userEdited!=='boolean')throw Error('配置编辑标记无效');
   for (const collection of [p.devices,p.monitors,p.groups,p.scenes,p.cycles]) {
     if(collection.length>64) throw Error('配置项超过上限');
     const ids = new Set();

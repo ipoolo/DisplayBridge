@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$BuildPath,[int]$DebugPort=0)
+param([Parameter(Mandatory=$true)][string]$BuildPath,[int]$DebugPort=0,[switch]$NoLaunch)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 $sourceRoot=(Resolve-Path -LiteralPath $BuildPath).Path.TrimEnd('\')
@@ -33,5 +33,11 @@ $installedHash=(Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
 if($sourceHash -ne $installedHash){throw 'Installed resource archive verification failed'}
 $launchArgs=@('--background')
 if($DebugPort){$launchArgs+=@('--remote-debugging-address=127.0.0.1',"--remote-debugging-port=$DebugPort")}
-Start-Process -FilePath (Join-Path $targetRoot 'DisplayBridge.exe') -ArgumentList $launchArgs -WindowStyle Hidden
-Write-Output 'Application installed; archive verified and background process started.'
+if(!$NoLaunch){
+  # Launch outside an MSIX parent's package context, as a normal desktop app.
+  $startup=New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ShowWindow=[uint16]0}
+  $command='"'+(Join-Path $targetRoot 'DisplayBridge.exe')+'" '+($launchArgs -join ' ')
+  $result=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine=$command;ProcessStartupInformation=$startup}
+  if($result.ReturnValue -ne 0){throw 'Installed successfully, but background launch failed; open DisplayBridge.exe directly.'}
+}
+Write-Output 'Application installed; resource archive verified.'
